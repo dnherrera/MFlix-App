@@ -170,10 +170,7 @@ namespace M220N.Repositories
         /// <param name="page">The page to return</param>
         /// <param name="cast">one or more strings on which to search the "cast" field.</param>
         /// <returns>A List of <see cref="Movie" />s</returns>
-        public async Task<IReadOnlyList<Movie>> GetMoviesByCastAsync(
-            CancellationToken cancellationToken = default,
-            string sortKey = DefaultSortKey,
-            int limit = DefaultMoviesPerPage, int page = 0, params string[] cast)
+        public async Task<IReadOnlyList<Movie>> GetMoviesByCastAsync(CancellationToken cancellationToken = default, string sortKey = DefaultSortKey, int limit = DefaultMoviesPerPage, int page = 0, params string[] cast)
         {
             var sort = new BsonDocument(sortKey, DefaultSortOrder);
 
@@ -213,8 +210,7 @@ namespace M220N.Repositories
         /// <param name="page">The page to return</param>
         /// <param name="cancellationToken">Allows the UI to cancel an asynchronous request. Optional.</param>
         /// <returns>A MoviesByCastProjection object</returns>
-        public async Task<MoviesByCastProjection> GetMoviesCastFacetedAsync(string cast, int page = 0,
-            CancellationToken cancellationToken = default)
+        public async Task<MoviesByCastProjection> GetMoviesCastFacetedAsync(string cast, int page = 0, CancellationToken cancellationToken = default)
         {
             /*
                TODO Ticket: Faceted Search
@@ -235,8 +231,8 @@ namespace M220N.Repositories
             var limitStage = new BsonDocument("$limit", DefaultMoviesPerPage);
 
             //I sort the results by the number of reviewers, descending
-            var sortStage = new BsonDocument("$sort",
-                new BsonDocument("tomatoes.viewer.numReviews", -1));
+            var sortStage = new BsonDocument("$sort", 
+                                new BsonDocument("tomatoes.viewer.numReviews", -1));
 
             // In conjunction with limitStage, I enable pagination
             var skipStage = new BsonDocument("$skip", DefaultMoviesPerPage * page);
@@ -245,12 +241,13 @@ namespace M220N.Repositories
             var facetStage = BuildFacetStage();
 
             // I am the pipeline that runs all of the stages
-            var pipeline = new[]
+            var pipeline = new BsonDocument[]
             {
                 matchStage,
                 sortStage,
-                // add the remaining stages in the correct order
-
+                skipStage,
+                limitStage,
+                facetStage
             };
 
             // I run the pipeline you built
@@ -261,7 +258,7 @@ namespace M220N.Repositories
             // We build another pipeline here to count the number of
             // movies that match _without_ the limit, skip, and facet stages
             var count = BuildAndRunCountPipeline(matchStage, sortStage);
-            result.Count = (int) count.Values.First();
+            result.Count = count is null ? 0 : (int)count.Values.First();
 
             return result;
         }
@@ -272,15 +269,15 @@ namespace M220N.Repositories
         /// <returns></returns>
         private BsonDocument BuildAndRunCountPipeline(BsonDocument matchStage, BsonDocument sortStage)
         {
-            var countPipeline = new[]
+            var countPipeline = new BsonDocument[]
             {
                 matchStage,
                 sortStage,
                 new BsonDocument("$count", "count")
             };
 
-            return _moviesCollection.Aggregate(PipelineDefinition<Movie, BsonDocument>.Create(countPipeline))
-                .FirstOrDefault();
+            var moviesCountBsonDocument = _moviesCollection.Aggregate(PipelineDefinition<Movie, BsonDocument>.Create(countPipeline)).FirstOrDefault();
+            return moviesCountBsonDocument;
         }
 
         /// <summary>
@@ -289,18 +286,20 @@ namespace M220N.Repositories
         /// <returns></returns>
         private BsonDocument BuildFacetStage()
         {
-            return new BsonDocument("$facet",
+            var facetStageDocument = new BsonDocument("$facet",
                 new BsonDocument()
                 {
                     BuildRuntimeBucketStage(),
                     BuildRatingBucketStage(),
                     BuildMoviesBucketStage()
                 });
+
+            return facetStageDocument;
         }
 
         private BsonElement BuildRuntimeBucketStage()
         {
-            return new BsonElement("runtime", new BsonArray
+            var runtimeElement = new BsonElement("runtime", new BsonArray
             {
                 new BsonDocument("$bucket",
                     new BsonDocument
@@ -317,11 +316,13 @@ namespace M220N.Repositories
                         }
                     })
             });
+
+            return runtimeElement;
         }
 
         private BsonElement BuildRatingBucketStage()
         {
-            return new BsonElement("rating", new BsonArray
+            var ratingElement =  new BsonElement("rating", new BsonArray
             {
                 new BsonDocument("$bucket",
                     new BsonDocument
@@ -338,16 +339,20 @@ namespace M220N.Repositories
                         }
                     })
             });
+
+            return ratingElement;
         }
 
         private BsonElement BuildMoviesBucketStage()
         {
-            return new BsonElement("movies",
+            var moviesElement =  new BsonElement("movies",
                 new BsonArray
                 {
                     new BsonDocument("$addFields",
                         new BsonDocument("title", "$title"))
                 });
+
+            return moviesElement;
         }
 
         /// <summary>
