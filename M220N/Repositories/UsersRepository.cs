@@ -84,7 +84,9 @@ namespace M220N.Repositories
                 user.Name = name;
                 user.Email = email;
 
-                await _usersCollection.InsertOneAsync(user);
+                await _usersCollection
+                .WithWriteConcern(WriteConcern.WMajority)
+                .InsertOneAsync(user, cancellationToken: cancellationToken);
 
                 var newUser = await GetUserAsync(user.Email, cancellationToken);
                
@@ -226,29 +228,17 @@ namespace M220N.Repositories
         /// <param name="preferences">The collection of preferences to set.</param>
         /// <param name="cancellationToken">Allows the UI to cancel an asynchronous request. Optional.</param>
         /// <returns></returns>
-        public async Task<UserResponse> SetUserPreferencesAsync(string email,
-            Dictionary<string, string> preferences, CancellationToken cancellationToken = default)
+        public async Task<UserResponse> SetUserPreferencesAsync(string email, Dictionary<string, string> preferences, CancellationToken cancellationToken = default)
         {
             try
             {
-                /**
-                  Ticket: User Preferences
-            
-                  Update the "preferences" field in the corresponding user's document to
-                  reflect the new information in preferences.
-                */
-
                 UpdateResult updateResult = null;
-                // TODO Ticket: User Preferences
-                // Use the data in "preferences" to update the user's preferences.
-                //
-                // updateResult = await _usersCollection.UpdateOneAsync(
-                //    new BsonDocument(),
-                //    Builders<User>.Update.Set("TODO", preferences),
-                //    /* Be sure to pass a new UpdateOptions object here,
-                //       setting IsUpsert to false! */
-                //    new UpdateOptions(),
-                //    cancellationToken);
+                var filter = Builders<User>.Filter.Eq(t => t.Email, email);
+
+                updateResult = await _usersCollection.UpdateOneAsync(filter,
+                   Builders<User>.Update.Set(x => x.Preferences, preferences),
+                   new UpdateOptions() { IsUpsert = false },
+                   cancellationToken);
 
                 return updateResult.MatchedCount == 0
                     ? new UserResponse(false, "No user found with that email")
