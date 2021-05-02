@@ -84,12 +84,21 @@ namespace M220N.Repositories
         {
             try
             {
-                return await _moviesCollection.Aggregate()
-                    .Match(Builders<Movie>.Filter.Eq(x => x.Id, movieId))
-                    // Ticket: Get Comments
-                    // Add a lookup stage that includes the
-                    // comments associated with the retrieved movie
+                // Add a lookup stage that includes the
+                // comments associated with the retrieved movie
+                var filter = Builders<Movie>.Filter.Eq(x => x.Id, movieId);
+                var movieWithComments = await _moviesCollection.Aggregate()
+                    .Match(filter)
+                    .Lookup
+                    (
+                        _commentsCollection,
+                        m => m.Id,
+                        c => c.MovieId,
+                        (Movie m) => m.Comments
+                    )
                     .FirstOrDefaultAsync(cancellationToken);
+
+                return movieWithComments;
             }
 
             catch (Exception ex)

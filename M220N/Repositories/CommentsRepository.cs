@@ -47,9 +47,11 @@ namespace M220N.Repositories
                     MovieId = movieId
                 };
 
-                // Ticket: Add a new Comment
                 // Implement InsertOneAsync() to insert a
                 // new comment into the comments collection.
+                await _commentsCollection
+                      .WithWriteConcern(WriteConcern.WMajority)
+                      .InsertOneAsync(newComment, cancellationToken : cancellationToken);
 
                 return await _moviesRepository.GetMovieAsync(movieId.ToString(), cancellationToken);
             }
@@ -68,22 +70,17 @@ namespace M220N.Repositories
         /// <param name="comment"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>An UpdateResult</returns>
-        public async Task<UpdateResult> UpdateCommentAsync(User user,
-            ObjectId movieId, ObjectId commentId, string comment,
-            CancellationToken cancellationToken = default)
+        public async Task<UpdateResult> UpdateCommentAsync(User user, ObjectId movieId, ObjectId commentId, string comment, CancellationToken cancellationToken = default)
         {
-            // Ticket: Update a Comment
             // Implement UpdateOneAsync() to update an
             // existing comment. Remember that only the original
             // comment owner can update the comment!
-            //
-            // // return await _commentsCollection.UpdateOneAsync(
-            // // Builders<Comment>.Filter.Where(...),
-            // // Builders<Comment>.Update.Set(...).Set(...),
-            // // new UpdateOptions { ... } ,
-            // // cancellationToken);
 
-            return null;
+            return await _commentsCollection.UpdateOneAsync(
+            Builders<Comment>.Filter.Where(u => u.Email == user.Email && u.MovieId == movieId && u.Id == commentId),
+            Builders<Comment>.Update.Set(c => c.Text, comment).Set(c => c.Name, user.Name),
+            new UpdateOptions { IsUpsert = false }, // IsUpsert = Gets or sets a value indicating whether to insert the document if it doesn't already exist.
+            cancellationToken);
         }
 
         /// <summary>
