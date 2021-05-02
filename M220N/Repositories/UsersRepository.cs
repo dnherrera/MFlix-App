@@ -1,4 +1,4 @@
-﻿    using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,18 +43,17 @@ namespace M220N.Repositories
         */
 
         /// <summary>
-        ///     Finds a user in the `users` collection
+        ///  Finds a user in the `users` collection
         /// </summary>
         /// <param name="email">The Email of the User</param>
         /// <param name="cancellationToken">Allows the UI to cancel an asynchronous request. Optional.</param>
         /// <returns>A User or null</returns>
         public async Task<User> GetUserAsync(string email, CancellationToken cancellationToken = default)
         {
-            // TODO Ticket: User Management
             // Retrieve the user document corresponding with the user's email.
-            //
-            // // return await _usersCollection.Find(...)
-            return null;
+            var user = await _usersCollection.Find(x => x.Email == email).FirstOrDefaultAsync(cancellationToken);
+            return user;
+          
         }
 
         /// <summary>
@@ -65,13 +64,10 @@ namespace M220N.Repositories
         /// <param name="password">The clear-text password, which will be hashed before storing.</param>
         /// <param name="cancellationToken">Allows the UI to cancel an asynchronous request. Optional.</param>
         /// <returns></returns>
-        public async Task<UserResponse> AddUserAsync(string name, string email, string password,
-            CancellationToken cancellationToken = default)
+        public async Task<UserResponse> AddUserAsync(string name, string email, string password, CancellationToken cancellationToken = default)
         {
             try
             {
-                var user = new User();
-                // TODO Ticket: User Management
                 // Create a user with the "Name", "Email", and "HashedPassword" fields.
                 // DO NOT STORE CLEAR-TEXT PASSWORDS! Instead, use the helper class
                 // we have created for you: PasswordHashOMatic.Hash(password)
@@ -83,7 +79,15 @@ namespace M220N.Repositories
                 // // To use a more durable Write Concern for this operation, add the 
                 // // .WithWriteConcern() method to your InsertOneAsync call.
 
+                var user = new User();
+                user.HashedPassword = PasswordHashOMatic.Hash(password);
+                user.Name = name;
+                user.Email = email;
+
+                await _usersCollection.InsertOneAsync(user);
+
                 var newUser = await GetUserAsync(user.Email, cancellationToken);
+               
                 return new UserResponse(newUser);
             }
             catch (Exception ex)
@@ -104,6 +108,19 @@ namespace M220N.Repositories
         {
             try
             {
+                // Locate the session object in the `sessions` collection by
+                // matching the "user_id" field with the email passed to this function.
+                // Then update the Session.UserId and Session.Jwt properties,
+                // setting the former to the email and the latter to the
+                // user.AuthToken that is passed in from the Controller.
+                // 
+                // If the session doesn't exist, allow MongoDB to create a
+                // new one by passing the IsUpsert update option.
+                //  await _sessionsCollection.UpdateOneAsync(
+                //  new BsonDocument(...),
+                //  Builders<Session>.Update.Set(...).Set(...),
+                //  new UpdateOptions(...));
+
                 var storedUser = await GetUserAsync(user.Email, cancellationToken);
                 if (storedUser == null)
                 {
@@ -118,19 +135,24 @@ namespace M220N.Repositories
                     return new UserResponse(false, "The password provided is not valid");
                 }
 
-                // TODO Ticket: User Management
-                // Locate the session object in the `sessions` collection by
-                // matching the "user_id" field with the email passed to this function.
-                // Then update the Session.UserId and Session.Jwt properties,
-                // setting the former to the email and the latter to the
-                // user.AuthToken that is passed in from the Controller.
-                // 
-                // If the session doesn't exist, allow MongoDB to create a
-                // new one by passing the IsUpsert update option.
-                //  await _sessionsCollection.UpdateOneAsync(
-                //  new BsonDocument(...),
-                //  Builders<Session>.Update.Set(...).Set(...),
-                //  new UpdateOptions(...));
+                var userSession = await GetUserSessionAsync(user.Email, cancellationToken);
+                
+                if (userSession is null)
+                {
+                    var newSession = new Session();
+                    newSession.Jwt = user.AuthToken;
+                    newSession.UserId = user.Id;
+
+                    await _sessionsCollection.InsertOneAsync(newSession);
+                }
+                else
+                {
+                   var filter = Builders<Session>.Filter.Eq(t => t.UserId, userSession.UserId);
+
+                   await _sessionsCollection.UpdateOneAsync(filter,
+                   Builders<Session>.Update.Set(s => s.Jwt, user.AuthToken).Set(u => u.UserId, user.AuthToken),
+                   new UpdateOptions() { IsUpsert = true });
+                }
 
                 storedUser.AuthToken = user.AuthToken;
                 return new UserResponse(storedUser);
@@ -150,10 +172,10 @@ namespace M220N.Repositories
         /// <returns></returns>
         public async Task<UserResponse> LogoutUserAsync(string email, CancellationToken cancellationToken = default)
         {
-            // TODO Ticket: User Management
             // Delete the document in the `sessions` collection matching the email.
+            // This is implemented in BsonDocument. You can also implement this in Lambda.
             
-            await _sessionsCollection.DeleteOneAsync(new BsonDocument(), cancellationToken);
+            await _sessionsCollection.DeleteOneAsync(new BsonDocument("user_id", email), cancellationToken);
             return new UserResponse(true, "User logged out.");
         }
 
@@ -165,9 +187,8 @@ namespace M220N.Repositories
         /// <returns></returns>
         public async Task<Session> GetUserSessionAsync(string email, CancellationToken cancellationToken = default)
         {
-            // TODO Ticket: User Management
             // Retrieve the session document corresponding with the user's email.
-            return await _sessionsCollection.Find(new BsonDocument()).FirstOrDefaultAsync();
+            return await _sessionsCollection.Find<Session>(new BsonDocument("user_id", email)).FirstOrDefaultAsync();
         }
 
         /// <summary>
