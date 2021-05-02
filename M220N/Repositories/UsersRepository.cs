@@ -153,7 +153,7 @@ namespace M220N.Repositories
 
                    await _sessionsCollection.UpdateOneAsync(filter,
                    Builders<Session>.Update.Set(s => s.Jwt, user.AuthToken).Set(u => u.UserId, user.AuthToken),
-                   new UpdateOptions() { IsUpsert = true });
+                   new UpdateOptions() { IsUpsert = true }); // IsUpsert = Gets or sets a value indicating whether to insert the document if it doesn't already exist.
                 }
 
                 storedUser.AuthToken = user.AuthToken;
@@ -237,7 +237,7 @@ namespace M220N.Repositories
 
                 updateResult = await _usersCollection.UpdateOneAsync(filter,
                    Builders<User>.Update.Set(x => x.Preferences, preferences),
-                   new UpdateOptions() { IsUpsert = false },
+                   new UpdateOptions() { IsUpsert = false }, // IsUpsert = Gets or sets a value indicating whether to insert the document if it doesn't already exist.
                    cancellationToken);
 
                 return updateResult.MatchedCount == 0
