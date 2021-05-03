@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using M220N.Models;
 using M220N.Models.Projections;
-using M220N.Models.Responses;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Driver;
@@ -113,15 +113,17 @@ namespace M220N.Repositories
             try
             {
                 List<ReportProjection> result = null;
-                // TODO Ticket: User Report
                 // Return the 20 users who have commented the most on MFlix. You will need to use
                 // the Group, Sort, Limit, and Project methods of the Aggregation pipeline.
-                //
-                // // result = await _commentsCollection
-                // //   .WithReadConcern(...)
-                // //   .Aggregate()
-                // //   .Group(...)
-                // //   .Sort(...).Limt(...).Project(...).ToListAsync()
+                var projection = Builders<ReportProjection>.Projection.Include(m => m.Count);
+
+                result = await _commentsCollection
+                .Aggregate()
+                .Group(x => x.Email, value => new ReportProjection() { Id = value.Key, Count = value.Count() })
+                .SortByDescending(x => x.Count)
+                .Limit(20)
+                .Project<ReportProjection>(projection)
+                .ToListAsync();
 
                 return new TopCommentsProjection(result);
             }
