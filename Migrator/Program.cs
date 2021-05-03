@@ -28,7 +28,7 @@ namespace Migrator
             var datePipelineResults = TransformDatePipeline();
             Console.WriteLine($"I found {datePipelineResults.Count} docs where the lastupdated field is of type 'string'.");
 
-            // TODO Ticket: Call  _moviesCollection.BulkWriteAsync, passing in the
+            // Call  _moviesCollection.BulkWriteAsync, passing in the
             // datePipelineResults. You will need to use a ReplaceOneModel<Movie>
             // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
             //
@@ -60,7 +60,7 @@ namespace Migrator
             if (ratingPipelineResults.Count > 0)
             {
                 BulkWriteResult<Movie> bulkWriteRatingsResult = null;
-                // TODO Ticket: Call  _moviesCollection.BulkWriteAsync, passing in the
+                // Call  _moviesCollection.BulkWriteAsync, passing in the
                 // ratingPipelineResults. You will need to use a ReplaceOneModel<Movie>
                 // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
                 //
