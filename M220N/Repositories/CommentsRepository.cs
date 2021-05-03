@@ -91,17 +91,10 @@ namespace M220N.Repositories
         /// <param name="user"></param>
         /// <param name="cancellationToken"></param>
         /// <returns>The movie associated with the comment that is being deleted.</returns>
-        public async Task<Movie> DeleteCommentAsync(ObjectId movieId, ObjectId commentId,
-            User user, CancellationToken cancellationToken = default)
+        public async Task<Movie> DeleteCommentAsync(ObjectId movieId, ObjectId commentId, User user, CancellationToken cancellationToken = default)
         {
-            // Ticket: Delete a Comment
-            // Implement DeleteOne() to delete an
-            // existing comment. Remember that only the original
-            // comment owner can delete the comment!
             _commentsCollection.DeleteOne(
-                Builders<Comment>.Filter.Where(
-                    c => c.MovieId == movieId
-                         && c.Id == commentId));
+                Builders<Comment>.Filter.Where(c => c.MovieId == movieId && c.Id == commentId && c.Email == user.Email));
 
             return await _moviesRepository.GetMovieAsync(movieId.ToString(), cancellationToken);
         }
