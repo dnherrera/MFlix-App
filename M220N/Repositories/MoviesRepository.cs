@@ -55,9 +55,7 @@ namespace M220N.Repositories
         /// </param>
         /// <param name="cancellationToken">Allows the UI to cancel an asynchronous request. Optional.</param>
         /// <returns>A <see cref="IReadOnlyList{T}" /> of <see cref="Movie" /> objects.</returns>
-        public async Task<IReadOnlyList<Movie>> GetMoviesAsync(int moviesPerPage = DefaultMoviesPerPage, int page = 0,
-            string sort = DefaultSortKey, int sortDirection = DefaultSortOrder,
-            CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<Movie>> GetMoviesAsync(int moviesPerPage = DefaultMoviesPerPage, int page = 0, string sort = DefaultSortKey, int sortDirection = DefaultSortOrder, CancellationToken cancellationToken = default)
         {
             var skip =  moviesPerPage * page;
             var limit = moviesPerPage;
@@ -103,11 +101,13 @@ namespace M220N.Repositories
 
             catch (Exception ex)
             {
-                // TODO Ticket: Error Handling
                 // Catch the exception and check the exception type and message contents.
                 // Return null if the exception is due to a bad/missing Id. Otherwise,
                 // throw.
-
+                if (ex.Message.Contains("not a valid"))
+                {
+                    return null;
+                }
                 throw;
             }
         }
