@@ -1,8 +1,10 @@
 ﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
 namespace M220N.Models.Projections
 {
+    [BsonIgnoreExtraElements]
     public class ConfigInfo
     {
         public MongoClientSettings Settings { get; set; }

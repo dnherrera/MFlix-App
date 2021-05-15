@@ -17,8 +17,8 @@ namespace Migrator
     {
         static IMongoCollection<Movie> _moviesCollection;
 
-        // TODO: Update this connection string as needed.
-        static string mongoConnectionString = "";
+        // Update this connection string as needed.
+        static string mongoConnectionString = "mongodb+srv://m220student:m220password@mflix.ew06u.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
         
         static async Task Main(string[] args)
         {
@@ -28,29 +28,52 @@ namespace Migrator
             var datePipelineResults = TransformDatePipeline();
             Console.WriteLine($"I found {datePipelineResults.Count} docs where the lastupdated field is of type 'string'.");
 
+            // Call  _moviesCollection.BulkWriteAsync, passing in the
+            // datePipelineResults. You will need to use a ReplaceOneModel<Movie>
+            // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
+            //
+            // // bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(...
+
+            // Date Pipeline
+
             if (datePipelineResults.Count > 0)
             {
                 BulkWriteResult<Movie> bulkWriteDatesResult = null;
-                // TODO Ticket: Call  _moviesCollection.BulkWriteAsync, passing in the
-                // datePipelineResults. You will need to use a ReplaceOneModel<Movie>
-                // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
-                //
-                // // bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(...
 
+                List<ReplaceOneModel<Movie>> listModel1 = new List<ReplaceOneModel<Movie>>();
+
+                foreach (Movie movie in datePipelineResults)
+                {
+                    var model = new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(x => x.Id == movie.Id), movie);
+                    listModel1.Add(model);
+                }
+
+                bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(listModel1, new BulkWriteOptions() { IsOrdered = false });
                 Console.WriteLine($"{bulkWriteDatesResult.ProcessedRequests.Count} records updated.");
             }
 
             var ratingPipelineResults = TransformRatingPipeline();
             Console.WriteLine($"I found {ratingPipelineResults.Count} docs where the imdb.rating field is not a number type.");
 
+            // Rating Pipeline
+
             if (ratingPipelineResults.Count > 0)
             {
                 BulkWriteResult<Movie> bulkWriteRatingsResult = null;
-                // TODO Ticket: Call  _moviesCollection.BulkWriteAsync, passing in the
+                // Call  _moviesCollection.BulkWriteAsync, passing in the
                 // ratingPipelineResults. You will need to use a ReplaceOneModel<Movie>
                 // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
                 //
                 // // bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(...
+
+                List<ReplaceOneModel<Movie>> listModel2 = new List<ReplaceOneModel<Movie>>();
+                foreach (Movie movie in ratingPipelineResults)
+                {
+                    ReplaceOneModel<Movie> model = new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(x => x.Id == movie.Id), movie);
+                    listModel2.Add(model);
+                }
+
+                bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(listModel2, new BulkWriteOptions() { IsOrdered = false });
 
                 Console.WriteLine($"{bulkWriteRatingsResult.ProcessedRequests.Count} records updated.");
             }
